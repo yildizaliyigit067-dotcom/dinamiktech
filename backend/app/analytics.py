@@ -260,4 +260,6 @@ def end_of_day(rows, stock):
         "refunds": refund_report(rows),
         "suggestions": profit_suggestions(rows),
         "anomalies": anomaly_signals(rows),
+        "comparison": comparison(rows),
     }
+
