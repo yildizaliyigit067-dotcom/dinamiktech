@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dinamik Tech</title>
+<style>
+  :root{
+    --navy:#232553;
+    --navy-2:#2d3068;
+    --navy-deep:#1a1c40;
+    --ink:#1a1c2e;
+    --paper:#f4f5fa;
+    --card:#ffffff;
+    --line:#e3e5f0;
+    --muted:#6b6f8a;
+    --good:#1f9d6b;
+    --warn:#c9810b;
+    --bad:#c5384b;
+    --accent:#4954c9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  body{padding-bottom:90px;}
+  header{background:var(--navy);color:#fff;position:sticky;top:0;z-index:50;
+    padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+    padding-top:max(14px,env(safe-area-inset-top));}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:.2px;font-size:17px;}
+  .brand .mark{display:inline-flex;align-items:baseline;}
+  .brand .dyn{color:#fff;}
+  .brand .tech{background:#fff;color:var(--navy);padding:1px 7px;border-radius:5px;margin-left:5px;font-weight:800;}
+  .controls{display:flex;align-items:center;gap:8px;}
+  .lang{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    color:#fff;border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;font-weight:600;}
+  .lang:hover{background:rgba(255,255,255,.2);}
+  .modepill{font-size:11px;background:rgba(255,255,255,.14);border-radius:20px;
+    padding:4px 10px;font-weight:600;}
+  main{max-width:980px;margin:0 auto;padding:18px 16px;}
+  .row{display:grid;gap:12px;}
+  h2.section{font-size:13px;color:var(--muted);font-weight:700;margin:22px 4px 10px;letter-spacing:.2px;}
+  .kpis{grid-template-columns:repeat(2,1fr);}
+  @media(min-width:640px){.kpis{grid-template-columns:repeat(4,1fr);}}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .kpi .label{color:var(--muted);font-size:12px;font-weight:600;margin-bottom:7px;}
+  .kpi .val{font-size:26px;font-weight:800;letter-spacing:-.5px;color:var(--ink);line-height:1;}
+  .kpi .sub{font-size:12px;color:var(--muted);margin-top:6px;}
+  .kpi.dark{background:var(--navy);border-color:var(--navy);}
+  .kpi.dark .label{color:rgba(255,255,255,.7);}
+  .kpi.dark .val{color:#fff;}
+  .kpi.dark .sub{color:rgba(255,255,255,.7);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .card h3{font-size:15px;font-weight:700;margin-bottom:12px;}
+  .bars{display:flex;align-items:flex-end;gap:4px;height:140px;padding-top:6px;}
+  .bar{flex:1;background:var(--navy);border-radius:4px 4px 0 0;min-height:3px;transition:height .4s ease;}
+  .bar:hover{background:var(--accent);}
+  .barlabels{display:flex;gap:4px;margin-top:6px;}
+  .barlabels span{flex:1;text-align:center;font-size:9px;color:var(--muted);overflow:hidden;white-space:nowrap;}
+  .list{display:flex;flex-direction:column;}
+  .li{display:flex;justify-content:space-between;align-items:center;
+    padding:10px 0;border-bottom:1px solid var(--line);gap:10px;}
+  .li:last-child{border-bottom:none;}
+  .li .name{font-weight:600;font-size:14px;}
+  .li .meta{font-size:12px;color:var(--muted);}
+  .li .amt{font-weight:700;font-size:14px;white-space:nowrap;}
+  .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;}
+  .tag.good{background:#e3f6ee;color:var(--good);}
+  .tag.warn{background:#fdf2dd;color:var(--warn);}
+  .tag.bad{background:#fbe6e9;color:var(--bad);}
+  .alert{border-radius:12px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--line);background:var(--card);}
+  .alert .t{font-weight:700;font-size:14px;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+  .alert .d{font-size:13px;color:var(--muted);line-height:1.5;}
+  .alert.high{border-left:4px solid var(--bad);}
+  .alert.medium{border-left:4px solid var(--warn);}
+  .alert.low{border-left:4px solid var(--accent);}
+  .alert.sug{border-left:4px solid var(--good);}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .dot.bad{background:var(--bad);}.dot.warn{background:var(--warn);}
+  .dot.low{background:var(--accent);}.dot.good{background:var(--good);}
+  #chatwrap{position:fixed;bottom:0;left:0;right:0;z-index:60;
+    background:var(--card);border-top:1px solid var(--line);
+    padding:10px 14px;padding-bottom:max(10px,env(safe-area-inset-bottom));}
+  #chatwrap .inner{max-width:980px;margin:0 auto;display:flex;gap:8px;}
+  #msg{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 13px;
+    font-size:14px;outline:none;font-family:inherit;}
+  #msg:focus{border-color:var(--accent);}
+  #send{background:var(--navy);color:#fff;border:none;border-radius:10px;
+    padding:0 18px;font-weight:700;cursor:pointer;font-size:14px;}
+  #send:disabled{opacity:.5;}
+  .chatlog{max-width:980px;margin:0 auto 14px;display:none;flex-direction:column;gap:10px;}
+  .chatlog.open{display:flex;}
+  .bubble{padding:11px 14px;border-radius:12px;font-size:14px;line-height:1.5;max-width:90%;white-space:pre-wrap;}
+  .bubble.me{background:var(--navy);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+  .bubble.ai{background:var(--card);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px;}
+  .ai-hint{font-size:12px;color:var(--muted);text-align:center;margin:6px 0;}
+  .loading{text-align:center;color:var(--muted);padding:50px 0;font-size:14px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="mark"><span class="dyn">DİNAMİK</span><span class="tech">TECH</span></span>
+  </div>
+  <div class="controls">
+    <span class="modepill" id="modepill">—</span>
+    <button class="lang" id="langbtn">EN</button>
+  </div>
+</header>
+<main>
+  <div id="content" class="loading">Yükleniyor…</div>
+</main>
+<div id="chatwrap">
+  <div class="chatlog" id="chatlog"></div>
+  <div class="inner">
+    <input id="msg" placeholder="AI asistana sor: bugün nasıl gitti?" autocomplete="off">
+    <button id="send">Sor</button>
+  </div>
+</div>
+<script>
+const T = {
+  tr:{revenue:"Ciro",profit:"Kâr",margin:"Kâr Marjı",avgticket:"Ort. Adisyon",
+    tickets:"adisyon",sales:"SATIŞ ÖZETİ",byday:"Günlük Ciro",bypay:"Ödeme Tipleri",
+    products:"ÜRÜN RAPORU",topsell:"En Çok Satanlar",topprofit:"En Kârlılar",
+    hourly:"SAAT RAPORU",peak:"En yoğun saat",stock:"STOK UYARILARI",refunds:"İADE / İPTAL",
+    refundrate:"İade oranı",suggestions:"KÂR ARTIRICI ÖNERİLER",anomalies:"KAÇAK / ANOMALİ UYARILARI",
+    nostock:"Kritik stok yok. Her şey yolunda.",noanom:"Anormallik tespit edilmedi.",
+    critical:"KRİTİK",warn:"AZALDI",ask:"AI asistana sor: bugün nasıl gitti?",send:"Sor",
+    units:"adet",remaining:"kaldı",of:"/",refreshNote:"dk'da bir otomatik yenilenir",thinking:"düşünüyor…"},
+  en:{revenue:"Revenue",profit:"Profit",margin:"Profit Margin",avgticket:"Avg. Ticket",
+    tickets:"tickets",sales:"SALES SUMMARY",byday:"Daily Revenue",bypay:"Payment Types",
+    products:"PRODUCT REPORT",topsell:"Top Sellers",topprofit:"Most Profitable",
+    hourly:"HOURLY REPORT",peak:"Peak hour",stock:"STOCK ALERTS",refunds:"REFUNDS / VOIDS",
+    refundrate:"Refund rate",suggestions:"PROFIT SUGGESTIONS",anomalies:"LEAK / ANOMALY ALERTS",
+    nostock:"No critical stock. All good.",noanom:"No anomalies detected.",
+    critical:"CRITICAL",warn:"LOW",ask:"Ask the AI: how did today go?",send:"Ask",
+    units:"units",remaining:"left",of:"of",refreshNote:"auto-refreshes every min",thinking:"thinking…"}
+};
+let lang="tr",DATA=null;
+const fmt=n=>new Intl.NumberFormat(lang==="tr"?"tr-TR":"en-US").format(Math.round(n));
+const money=n=>fmt(n)+" ₺";
+async function load(){
+  try{const r=await fetch("/api/report");DATA=await r.json();render();}
+  catch(e){document.getElementById("content").innerHTML="<div class='loading'>Veri alınamadı.</div>";}
+}
+function render(){
+  const t=T[lang],d=DATA,s=d.sales;
+  document.getElementById("modepill").textContent=d.mode==="live"?"● CANLI":"● DEMO";
+  document.getElementById("langbtn").textContent=lang==="tr"?"EN":"TR";
+  document.getElementById("msg").placeholder=t.ask;
+  document.getElementById("send").textContent=t.send;
+  document.documentElement.lang=lang;
+  let html="";
+  html+=`<div class="row kpis">
+    <div class="kpi dark"><div class="label">${t.revenue}</div><div class="val">${money(s.revenue)}</div><div class="sub">${s.ticket_count} ${t.tickets}</div></div>
+    <div class="kpi"><div class="label">${t.profit}</div><div class="val">${money(s.profit)}</div><div class="sub">${t.margin}: %${s.margin_pct}</div></div>
+    <div class="kpi"><div class="label">${t.margin}</div><div class="val">%${s.margin_pct}</div></div>
+    <div class="kpi"><div class="label">${t.avgticket}</div><div class="val">${money(s.avg_ticket)}</div></div></div>`;
+  const days=s.by_day.slice(-14),maxd=Math.max(...days.map(x=>x.total),1);
+  html+=`<h2 class="section">${t.sales}</h2><div class="card"><h3>${t.byday}</h3>
+    <div class="bars">${days.map(x=>`<div class="bar" style="height:${Math.max(3,x.total/maxd*100)}%" title="${x.day}: ${money(x.total)}"></div>`).join("")}</div>
+    <div class="barlabels">${days.map(x=>`<span>${x.day.slice(5)}</span>`).join("")}</div></div>`;
+  html+=`<div class="card" style="margin-top:12px"><h3>${t.bypay}</h3><div class="list">`;
+  s.by_payment.forEach(p=>{html+=`<div class="li"><span class="name">${p.type}</span><span class="amt">${money(p.total)}</span></div>`;});
+  html+=`</div></div>`;
+  html+=`<h2 class="section">${t.products}</h2><div class="card"><h3>${t.topsell}</h3><div class="list">`;
+  d.products.top_sellers.forEach(i=>{html+=`<div class="li"><div><div class="name">${i.name}</div><div class="meta">${i.category} · %${i.margin_pct}</div></div><span class="amt">${i.qty} ${t.units}</span></div>`;});
+  html+=`</div></div><div class="card" style="margin-top:12px"><h3>${t.topprofit}</h3><div class="list">`;
+  d.products.top_profit.forEach(i=>{html+=`<div class="li"><div><div class="name">${i.name}</div><div class="meta">${i.qty} ${t.units}</div></div><span class="amt">${money(i.profit)}</span></div>`;});
+  html+=`</div></div>`;
+  const hrs=d.hourly.hours,maxh=Math.max(...hrs.map(x=>x.revenue),1);
+  html+=`<h2 class="section">${t.hourly}</h2><div class="card"><h3>${t.peak}: ${d.hourly.peak_hour}</h3>
+    <div class="bars">${hrs.map(x=>`<div class="bar" style="height:${Math.max(3,x.revenue/maxh*100)}%" title="${x.hour}: ${money(x.revenue)}"></div>`).join("")}</div>
+    <div class="barlabels">${hrs.map(x=>`<span>${x.hour.slice(0,2)}</span>`).join("")}</div></div>`;
+  html+=`<h2 class="section">${t.anomalies}</h2>`;
+  if(d.anomalies.length===0){html+=`<div class="alert"><div class="d">${t.noanom}</div></div>`;}
+  else{d.anomalies.forEach(a=>{html+=`<div class="alert ${a.level}"><div class="t"><span class="dot ${a.level==='high'?'bad':a.level==='medium'?'warn':'low'}"></span>${a.title}</div><div class="d">${a.detail}</div></div>`;});}
+  html+=`<h2 class="section">${t.suggestions}</h2>`;
+  d.suggestions.forEach(sg=>{html+=`<div class="alert sug"><div class="t"><span class="dot good"></span>${sg.title}</div><div class="d">${sg.detail}</div></div>`;});
+  html+=`<h2 class="section">${t.stock}</h2>`;
+  if(d.stock_alerts.length===0){html+=`<div class="alert"><div class="d">${t.nostock}</div></div>`;}
+  else{html+=`<div class="card"><div class="list">`;
+    d.stock_alerts.forEach(a=>{const cls=a.severity==="critical"?"bad":"warn",lbl=a.severity==="critical"?t.critical:t.warn;
+      html+=`<div class="li"><div><div class="name">${a.item}</div><div class="meta">${a.current} ${a.unit} ${t.remaining} ${t.of} ${a.critical} ${a.unit}</div></div><span class="tag ${cls}">${lbl}</span></div>`;});
+    html+=`</div></div>`;}
+  html+=`<h2 class="section">${t.refunds}</h2><div class="row kpis"><div class="kpi"><div class="label">${t.refundrate}</div><div class="val">%${d.refunds.void_rate_pct}</div><div class="sub">${money(d.refunds.void_total)}</div></div></div>`;
+  html+=`<p class="ai-hint" style="margin-top:18px">${d.refresh_minutes} ${t.refreshNote}</p>`;
+  document.getElementById("content").innerHTML=html;
+}
+document.getElementById("langbtn").onclick=()=>{lang=lang==="tr"?"en":"tr";if(DATA)render();};
+const log=document.getElementById("chatlog"),msg=document.getElementById("msg"),send=document.getElementById("send");
+function addBubble(text,who){log.classList.add("open");const b=document.createElement("div");b.className="bubble "+who;b.textContent=text;log.appendChild(b);b.scrollIntoView({behavior:"smooth"});return b;}
+async function ask(){
+  const text=msg.value.trim();if(!text)return;
+  addBubble(text,"me");msg.value="";send.disabled=true;
+  const thinking=addBubble(T[lang].thinking,"ai");
+  try{const r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({message:text,lang})});
+    const d=await r.json();thinking.textContent=d.answer;}
+  catch(e){thinking.textContent="Bağlantı hatası.";}
+  send.disabled=false;
+}
+send.onclick=ask;
+msg.onkeydown=e=>{if(e.key==="Enter")ask();};
+load();
+setInterval(load,5*60*1000);
+</script>
+</body>
+</html>
