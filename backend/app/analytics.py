@@ -1,10 +1,5 @@
-"""
-Analiz motoru / Analytics engine.
-Raporlar, kâr önerileri, anomali/kaçak tespiti.
-"""
-
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from statistics import mean, pstdev
 
 
@@ -19,15 +14,12 @@ def sales_report(rows):
     discounts = sum(r.get("discount_total", 0) for r in act)
     profit = revenue - cost - discounts
     tickets = len({r["ticket_id"] for r in act})
-
     by_day = defaultdict(float)
     for r in act:
         by_day[r["date"].date().isoformat()] += r["line_total"]
-
     by_payment = defaultdict(float)
     for r in act:
         by_payment[r["payment_type"]] += r["line_total"]
-
     return {
         "revenue": round(revenue, 2),
         "cost": round(cost, 2),
@@ -37,15 +29,13 @@ def sales_report(rows):
         "ticket_count": tickets,
         "avg_ticket": round(revenue / tickets, 2) if tickets else 0,
         "by_day": [{"day": k, "total": round(v, 2)} for k, v in sorted(by_day.items())],
-        "by_payment": [{"type": k, "total": round(v, 2)} for k, v in
-                       sorted(by_payment.items(), key=lambda x: -x[1])],
+        "by_payment": [{"type": k, "total": round(v, 2)} for k, v in sorted(by_payment.items(), key=lambda x: -x[1])],
     }
 
 
 def product_report(rows):
     act = _active(rows)
-    agg = defaultdict(lambda: {"qty": 0, "revenue": 0.0, "profit": 0.0,
-                               "category": "", "unit_price": 0, "unit_cost": 0})
+    agg = defaultdict(lambda: {"qty": 0, "revenue": 0.0, "profit": 0.0, "category": "", "unit_price": 0, "unit_cost": 0})
     for r in act:
         a = agg[r["item_name"]]
         a["qty"] += r["quantity"]
@@ -54,7 +44,6 @@ def product_report(rows):
         a["category"] = r["category"]
         a["unit_price"] = r["unit_price"]
         a["unit_cost"] = r["unit_cost"]
-
     items = []
     for name, a in agg.items():
         margin = (a["profit"] / a["revenue"] * 100) if a["revenue"] else 0
@@ -62,38 +51,6 @@ def product_report(rows):
             "name": name,
             "category": a["category"],
             "qty": a["qty"],
-
-def comparison(rows):
-    from datetime import timedelta
-    act = _active(rows)
-    if not act:
-        return {"today": 0, "yesterday": 0, "change_pct": 0,
-                "week": 0, "prev_week": 0, "week_change_pct": 0}
-    dates = [r["date"] for r in act]
-    last = max(dates).date()
-    prev = last - timedelta(days=1)
-    def day_rev(d):
-        return sum(r["line_total"] for r in act if r["date"].date() == d)
-    def range_rev(start, end):
-        return sum(r["line_total"] for r in act if start <= r["date"].date() <= end)
-    today = day_rev(last)
-    yesterday = day_rev(prev)
-    week = range_rev(last - timedelta(days=6), last)
-    prev_week = range_rev(last - timedelta(days=13), last - timedelta(days=7))
-    def pct(now, before):
-        if before <= 0:
-            return 0
-        return round((now - before) / before * 100, 1)
-    return {
-        "today": round(today, 2),
-        "yesterday": round(yesterday, 2),
-        "change_pct": pct(today, yesterday),
-        "week": round(week, 2),
-        "prev_week": round(prev_week, 2),
-        "week_change_pct": pct(week, prev_week),
-        "last_date": last.isoformat(),
-    }
-
             "revenue": round(a["revenue"], 2),
             "profit": round(a["profit"], 2),
             "margin_pct": round(margin, 1),
@@ -103,8 +60,7 @@ def comparison(rows):
         "items": items,
         "top_sellers": items[:5],
         "top_profit": sorted(items, key=lambda x: -x["profit"])[:5],
-        "low_margin": sorted([i for i in items if i["qty"] >= 5],
-                             key=lambda x: x["margin_pct"])[:5],
+        "low_margin": sorted([i for i in items if i["qty"] >= 5], key=lambda x: x["margin_pct"])[:5],
     }
 
 
@@ -115,7 +71,6 @@ def hourly_report(rows):
         h = r["date"].hour
         by_hour[h]["revenue"] += r["line_total"]
         by_hour[h]["tickets"].add(r["ticket_id"])
-
     out = []
     for h in range(8, 24):
         d = by_hour.get(h)
@@ -158,46 +113,35 @@ def refund_report(rows):
 def profit_suggestions(rows):
     prod = product_report(rows)
     sug = []
-
     for it in prod["low_margin"]:
         if it["margin_pct"] < 58 and it["qty"] >= 8:
             sug.append({
                 "type": "margin",
-                "title": f"{it['name']} marjı düşük",
-                "detail": (f"{it['name']} iyi satıyor ({it['qty']} adet) ama kâr marjı "
-                           f"%{it['margin_pct']}. 5-10 TL fiyat artışı veya porsiyon/maliyet "
-                           f"düzenlemesi toplam kârı belirgin artırır."),
-                "impact": "yüksek",
+                "title": f"{it['name']} marji dusuk",
+                "detail": f"{it['name']} iyi satiyor ({it['qty']} adet) ama kar marji %{it['margin_pct']}. 5-10 TL fiyat artisi veya porsiyon/maliyet duzenlemesi toplam kari belirgin artirir.",
+                "impact": "yuksek",
             })
-
     if prod["top_profit"]:
         star = prod["top_profit"][0]
         sug.append({
             "type": "promote",
-            "title": f"{star['name']} kâr lokomotifin",
-            "detail": (f"{star['name']} en çok kâr getiren ürün "
-                       f"({star['profit']:.0f} TL). Menüde üst sıraya al, "
-                       f"personel önersin, kampanyada bunu kullan."),
+            "title": f"{star['name']} kar lokomotifin",
+            "detail": f"{star['name']} en cok kar getiren urun ({star['profit']:.0f} TL). Menude ust siraya al, personel onersin, kampanyada bunu kullan.",
             "impact": "orta",
         })
-
     if prod["top_sellers"]:
         best = prod["top_sellers"][0]
         sug.append({
             "type": "upsell",
-            "title": f"{best['name']} ile çapraz satış",
-            "detail": (f"{best['name']} en çok satan ürünün ({best['qty']} adet). "
-                       f"Yanına yüksek marjlı bir tatlı/içecek menüsü öner; "
-                       f"sepet ortalamasını yükseltir."),
+            "title": f"{best['name']} ile capraz satis",
+            "detail": f"{best['name']} en cok satan urunun ({best['qty']} adet). Yanina yuksek marjli bir tatli/icecek menusu oner; sepet ortalamasini yukseltir.",
             "impact": "orta",
         })
-
     return sug[:6]
 
 
 def anomaly_signals(rows):
     signals = []
-
     by_cashier = defaultdict(lambda: {"total": 0.0, "void": 0.0, "disc": 0.0})
     for r in rows:
         c = r.get("cashier", "?")
@@ -205,13 +149,11 @@ def anomaly_signals(rows):
         if r.get("is_void"):
             by_cashier[c]["void"] += r["line_total"]
         by_cashier[c]["disc"] += r.get("discount_total", 0)
-
     rates = []
     for c, d in by_cashier.items():
         if d["total"] > 0:
             rate = (d["void"] + d["disc"]) / d["total"] * 100
             rates.append((c, rate, d["void"] + d["disc"]))
-
     if len(rates) >= 3:
         avg = mean([r[1] for r in rates])
         sd = pstdev([r[1] for r in rates]) or 1
@@ -219,21 +161,16 @@ def anomaly_signals(rows):
             if rate > avg + 1.5 * sd and rate > 8 and amount > 200:
                 signals.append({
                     "level": "high",
-                    "title": f"Kasiyer '{c}' iptal/iskonto oranı yüksek",
-                    "detail": (f"'{c}' kasiyerinde iptal+iskonto oranı %{rate:.1f} "
-                               f"(işletme ortalaması %{avg:.1f}). Toplam {amount:.0f} TL. "
-                               f"Bu fark kasten yapılmış olabilir; kayıtları incele."),
+                    "title": f"Kasiyer '{c}' iptal/iskonto orani yuksek",
+                    "detail": f"'{c}' kasiyerinde iptal+iskonto orani %{rate:.1f} (isletme ortalamasi %{avg:.1f}). Toplam {amount:.0f} TL. Bu fark kasten yapilmis olabilir; kayitlari incele.",
                 })
-
     rr = refund_report(rows)
     if rr["void_rate_pct"] > 6:
         signals.append({
             "level": "medium",
-            "title": "Genel iptal oranı yüksek",
-            "detail": (f"İptal/iade oranı %{rr['void_rate_pct']} "
-                       f"({rr['void_total']:.0f} TL). %5 üstü dikkat gerektirir."),
+            "title": "Genel iptal orani yuksek",
+            "detail": f"Iptal/iade orani %{rr['void_rate_pct']} ({rr['void_total']:.0f} TL). %5 ustu dikkat gerektirir.",
         })
-
     sales = sales_report(rows)
     pay = {p["type"]: p["total"] for p in sales["by_payment"]}
     cash = pay.get("Nakit", 0)
@@ -242,12 +179,40 @@ def anomaly_signals(rows):
     if cash_pct < 12:
         signals.append({
             "level": "low",
-            "title": "Nakit oranı çok düşük",
-            "detail": (f"Nakit satış oranı %{cash_pct:.0f}. Bilgi amaçlı; "
-                       f"nakit işlemlerin kasaya tam girip girmediğini kontrol et."),
+            "title": "Nakit orani cok dusuk",
+            "detail": f"Nakit satis orani %{cash_pct:.0f}. Bilgi amacli; nakit islemlerin kasaya tam girip girmedigini kontrol et.",
         })
-
     return signals
+
+
+def comparison(rows):
+    act = _active(rows)
+    if not act:
+        return {"today": 0, "yesterday": 0, "change_pct": 0, "week": 0, "prev_week": 0, "week_change_pct": 0}
+    dates = [r["date"] for r in act]
+    last = max(dates).date()
+    prev = last - timedelta(days=1)
+    def day_rev(d):
+        return sum(r["line_total"] for r in act if r["date"].date() == d)
+    def range_rev(start, end):
+        return sum(r["line_total"] for r in act if start <= r["date"].date() <= end)
+    today = day_rev(last)
+    yesterday = day_rev(prev)
+    week = range_rev(last - timedelta(days=6), last)
+    prev_week = range_rev(last - timedelta(days=13), last - timedelta(days=7))
+    def pct(now, before):
+        if before <= 0:
+            return 0
+        return round((now - before) / before * 100, 1)
+    return {
+        "today": round(today, 2),
+        "yesterday": round(yesterday, 2),
+        "change_pct": pct(today, yesterday),
+        "week": round(week, 2),
+        "prev_week": round(prev_week, 2),
+        "week_change_pct": pct(week, prev_week),
+        "last_date": last.isoformat(),
+    }
 
 
 def end_of_day(rows, stock):
@@ -262,4 +227,3 @@ def end_of_day(rows, stock):
         "anomalies": anomaly_signals(rows),
         "comparison": comparison(rows),
     }
-
