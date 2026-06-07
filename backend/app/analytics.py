@@ -62,6 +62,38 @@ def product_report(rows):
             "name": name,
             "category": a["category"],
             "qty": a["qty"],
+
+def comparison(rows):
+    from datetime import timedelta
+    act = _active(rows)
+    if not act:
+        return {"today": 0, "yesterday": 0, "change_pct": 0,
+                "week": 0, "prev_week": 0, "week_change_pct": 0}
+    dates = [r["date"] for r in act]
+    last = max(dates).date()
+    prev = last - timedelta(days=1)
+    def day_rev(d):
+        return sum(r["line_total"] for r in act if r["date"].date() == d)
+    def range_rev(start, end):
+        return sum(r["line_total"] for r in act if start <= r["date"].date() <= end)
+    today = day_rev(last)
+    yesterday = day_rev(prev)
+    week = range_rev(last - timedelta(days=6), last)
+    prev_week = range_rev(last - timedelta(days=13), last - timedelta(days=7))
+    def pct(now, before):
+        if before <= 0:
+            return 0
+        return round((now - before) / before * 100, 1)
+    return {
+        "today": round(today, 2),
+        "yesterday": round(yesterday, 2),
+        "change_pct": pct(today, yesterday),
+        "week": round(week, 2),
+        "prev_week": round(prev_week, 2),
+        "week_change_pct": pct(week, prev_week),
+        "last_date": last.isoformat(),
+    }
+
             "revenue": round(a["revenue"], 2),
             "profit": round(a["profit"], 2),
             "margin_pct": round(margin, 1),
