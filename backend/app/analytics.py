@@ -267,7 +267,35 @@ def anomaly_signals(rows):
 
 
 # --- GÜN SONU ÖZETİ (her şeyi birleştirir) -----------------------------------
-def end_of_day(rows, stock):
+def shrinkage_report(items, lang_neutral=True):
+    """
+    Fire/kaçak özeti. Her kalem reçeteye göre beklenen vs gerçek tüketim farkı.
+    Toplam açık değeri (TL) ve seviye bazlı yorum üretir.
+    """
+    total = sum(i["value"] for i in items if i["diff"] > 0)
+    high = [i for i in items if i["level"] == "high"]
+    enriched = []
+    for i in items:
+        if i["diff"] <= 0:
+            note_tr, note_en = "normal", "normal"
+        elif i["level"] == "high":
+            note_tr = "ciddi açık — kaçak şüphesi"
+            note_en = "serious gap — possible leak"
+        elif i["level"] == "medium":
+            note_tr = "açık var — fire/kontrol"
+            note_en = "gap present — waste/check"
+        else:
+            note_tr = "kabul edilebilir fire"
+            note_en = "acceptable waste"
+        enriched.append({**i, "note_tr": note_tr, "note_en": note_en})
+    return {
+        "items": enriched,
+        "total_value": round(total),
+        "high_count": len(high),
+    }
+
+
+def end_of_day(rows, stock, shrinkage=None):
     return {
         "generated_at": datetime.now().isoformat(),
         "sales": sales_report(rows),
@@ -278,6 +306,7 @@ def end_of_day(rows, stock):
         "suggestions": profit_suggestions(rows),
         "anomalies": anomaly_signals(rows),
         "comparison": comparison(rows),
+        "shrinkage": shrinkage_report(shrinkage) if shrinkage else None,
     }
 
 
