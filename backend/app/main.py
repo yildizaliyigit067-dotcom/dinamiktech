@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from .datasource import get_tickets, get_stock, get_shrinkage, data_mode
 from . import analytics
 from . import assistant
+from . import store
 
 REFRESH_MINUTES = int(os.getenv("REFRESH_MINUTES", "30"))
 HISTORY_DAYS = int(os.getenv("HISTORY_DAYS", "30"))
@@ -143,6 +144,31 @@ def ingest(body: IngestIn):
         _state["report"] = report
         _state["last_refresh"] = time.time()
     return {"ok": True, "received": len(norm)}
+
+
+# --- Yönetim (ürün / malzeme / reçete) --------------------------------------
+class ManageIn(BaseModel):
+    products: list = []
+    ingredients: list = []
+    recipes: dict = {}
+
+
+@app.get("/api/manage")
+def get_manage():
+    """Restoranın girdiği ürün/malzeme/reçete verisini döndür."""
+    return store.load()
+
+
+@app.post("/api/manage")
+def save_manage(body: ManageIn):
+    """Yönetici panelinden gelen veriyi kalıcı kaydet."""
+    data = {
+        "products": body.products,
+        "ingredients": body.ingredients,
+        "recipes": body.recipes,
+    }
+    ok = store.save(data)
+    return {"ok": ok}
 
 
 # --- Statik panel ------------------------------------------------------------
