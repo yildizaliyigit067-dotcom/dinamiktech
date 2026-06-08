@@ -1,32 +1,41 @@
 """
 Dinamik Tech — FastAPI ana uygulaması.
+
+- SambaPOS'tan (veya örnek veriden) veriyi çeker, analiz eder, panele sunar.
+- 30 dakikada bir arka planda otomatik veri yeniler (SambaPOS eklentisi gibi).
+- AI sohbet endpoint'i Claude API'ye bağlanır.
+- Mobil uyumlu paneli statik olarak sunar (TR/EN).
 """
 
 import os
+import asyncio
 import threading
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .datasource import get_tickets, get_stock, data_mode
+from .datasource import get_tickets, get_stock, get_shrinkage, data_mode
 from . import analytics
 from . import assistant
 
 REFRESH_MINUTES = int(os.getenv("REFRESH_MINUTES", "30"))
 HISTORY_DAYS = int(os.getenv("HISTORY_DAYS", "30"))
 
+# Bellekteki son rapor (cache). Otomatik yenileme bunu günceller.
 _state = {"report": None, "last_refresh": None}
 _lock = threading.Lock()
 
 
 def refresh_data():
+    """SambaPOS'tan veriyi çek, analiz et, cache'i güncelle."""
     rows = get_tickets(days_back=HISTORY_DAYS)
     stock = get_stock()
-    report = analytics.end_of_day(rows, stock)
+    shrink = get_shrinkage()
+    report = analytics.end_of_day(rows, stock, shrink)
     with _lock:
         _state["report"] = report
         _state["last_refresh"] = time.time()
@@ -34,6 +43,7 @@ def refresh_data():
 
 
 def _background_loop():
+    """30 dk'da bir otomatik yenileme döngüsü (eklenti davranışı)."""
     while True:
         try:
             refresh_data()
@@ -44,8 +54,8 @@ def _background_loop():
 
 
 @asynccontextmanager
-async def lifespan(app):
-    refresh_data()
+async def lifespan(app: FastAPI):
+    refresh_data()  # başlangıçta hemen bir kez çek
     t = threading.Thread(target=_background_loop, daemon=True)
     t.start()
     yield
@@ -88,9 +98,12 @@ class ChatIn(BaseModel):
 @app.post("/api/chat")
 def chat(body: ChatIn):
     r = _get_report()
-    return assistant.ask(body.message, r, lang=body.lang)
+    result = assistant.ask(body.message, r, lang=body.lang)
+    return result
 
 
+# Masaüstü ajanından gelen ham SambaPOS verisini al, analiz et, cache'le.
+# Bu sayede panel buluttayken veri işletme PC'sinden gelebilir.
 class IngestIn(BaseModel):
     rows: list
 
@@ -124,13 +137,15 @@ def ingest(body: IngestIn):
         except Exception:
             continue
     stock = get_stock()
-    report = analytics.end_of_day(norm, stock)
+    shrink = get_shrinkage()
+    report = analytics.end_of_day(norm, stock, shrink)
     with _lock:
         _state["report"] = report
         _state["last_refresh"] = time.time()
     return {"ok": True, "received": len(norm)}
 
 
+# --- Statik panel ------------------------------------------------------------
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
 FRONTEND_DIR = os.path.abspath(FRONTEND_DIR)
 
