@@ -136,7 +136,7 @@ const T={
     aiTitle:"AI Asistan",aiSub:"Sistem verinize göre cevaplar",placeholder:"Bir şey sorun: bugün nasıl gitti?",send:"Gönder",thinking:"düşünüyor...",
     initMsg:"Merhaba. Ben Dinamik Tech asistanınızım. Satış, kâr, stok veya olası kaçaklar hakkında dilediğinizi sorabilirsiniz.",
     quick:["Bugün nasıl gitti?","En kârlı ürünüm ne?","Kaçak var mı?","Stok durumu nasıl?"],
-    soon:"Bu bölüm yakında.",setData:"Veri Modu",setRefresh:"Yenileme Sıklığı",min:"dakika",eodTitle:"Gün Sonu Raporu",eodSub:"Günün özeti ve önerilen aksiyonlar",eodSales:"SATIŞ ÖZETİ",eodRev:"Ciro",eodProfit:"Kâr",eodAvg:"Ort. Adisyon",eodTickets:"Adisyon",eodTop:"EN ÇOK SATAN",eodPeak:"YOĞUN SAAT",eodRefund:"İADE ORANI",eodAnom:"KAÇAK / ANOMALİ",eodAction:"ÖNERİLEN AKSİYON",eodNoAnom:"Bugün anormallik tespit edilmedi.",eodPrint:"Yazdır / Paylaş",eodNoAct:"Bugün için özel öneri yok."},
+    soon:"Bu bölüm yakında.",setData:"Veri Modu",setRefresh:"Yenileme Sıklığı",min:"dakika",eodTitle:"Gün Sonu Raporu",eodSub:"Günün özeti ve önerilen aksiyonlar",eodSales:"SATIŞ ÖZETİ",eodRev:"Ciro",eodProfit:"Kâr",eodAvg:"Ort. Adisyon",eodTickets:"Adisyon",eodTop:"EN ÇOK SATAN",eodPeak:"YOĞUN SAAT",eodRefund:"İADE ORANI",eodAnom:"KAÇAK / ANOMALİ",eodAction:"ÖNERİLEN AKSİYON",eodNoAnom:"Bugün anormallik tespit edilmedi.",eodPrint:"Yazdır / Paylaş",eodNoAct:"Bugün için özel öneri yok.",shrink:"FİRE & KAÇAK",shrinkSub:"Reçeteye göre beklenen vs gerçek tüketim",shrinkTotal:"Toplam açık",shrinkExpected:"Beklenen",shrinkActual:"Gerçek",shrinkGap:"Açık",shrinkNone:"Açık tespit edilmedi.",shrinkAlert:"açık tespit edildi — fire mi kaçak mı kontrol et"},
   en:{nav:{dashboard:"Dashboard",reports:"Reports",eod:"Day Report",ai:"AI Assistant",settings:"Settings"},
     grp1:"GENERAL",grp2:"SYSTEM",outlet:"Main Outlet",demo:"DEMO",live:"LIVE",
     totalSales:"Total Sales",orders:"Orders",avgOrder:"Avg Order",grossProfit:"Gross Profit",
@@ -148,7 +148,7 @@ const T={
     aiTitle:"AI Assistant",aiSub:"Answers from your system data",placeholder:"Ask something: how did today go?",send:"Send",thinking:"thinking...",
     initMsg:"Hello. I'm your Dinamik Tech assistant. Ask me anything about sales, profit, stock or potential leaks.",
     quick:["How did today go?","Most profitable item?","Any leaks?","Stock status?"],
-    soon:"This section is coming soon.",setData:"Data Mode",setRefresh:"Refresh Interval",min:"minutes",eodTitle:"End of Day Report",eodSub:"Daily summary and recommended actions",eodSales:"SALES SUMMARY",eodRev:"Revenue",eodProfit:"Profit",eodAvg:"Avg Ticket",eodTickets:"Orders",eodTop:"TOP SELLER",eodPeak:"PEAK HOUR",eodRefund:"REFUND RATE",eodAnom:"LEAK / ANOMALY",eodAction:"RECOMMENDED ACTION",eodNoAnom:"No anomalies detected today.",eodPrint:"Print / Share",eodNoAct:"No specific suggestion for today."}
+    soon:"This section is coming soon.",setData:"Data Mode",setRefresh:"Refresh Interval",min:"minutes",eodTitle:"End of Day Report",eodSub:"Daily summary and recommended actions",eodSales:"SALES SUMMARY",eodRev:"Revenue",eodProfit:"Profit",eodAvg:"Avg Ticket",eodTickets:"Orders",eodTop:"TOP SELLER",eodPeak:"PEAK HOUR",eodRefund:"REFUND RATE",eodAnom:"LEAK / ANOMALY",eodAction:"RECOMMENDED ACTION",eodNoAnom:"No anomalies detected today.",eodPrint:"Print / Share",eodNoAct:"No specific suggestion for today.",shrink:"WASTE & LEAK",shrinkSub:"Recipe-expected vs actual consumption",shrinkTotal:"Total gap",shrinkExpected:"Expected",shrinkActual:"Actual",shrinkGap:"Gap",shrinkNone:"No gap detected.",shrinkAlert:"gap detected — check if waste or leak"}
 };
 const ICONS={dashboard:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
   reports:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 4-6"/></svg>',
@@ -211,6 +211,7 @@ function renderDash(){const t=T[lang],d=DATA,s=d.sales,c=d.comparison||{};
   pay.forEach((p,i)=>{const pct=Math.round(p.total/tot*100);h+='<div class="row"><span>'+(lang==="en"?(p.type_en||p.type):p.type)+'</span><b>%'+pct+'</b></div><div class="track"><div class="fill" style="width:'+pct+'%;background:'+colors[i%3]+'"></div></div>';});
   h+='</div><div class="aimgr rise d6"><div class="h">⚡ '+t.aiMgr+'</div>';
   (d.anomalies||[]).slice(0,1).forEach(a=>h+='<div class="it"><span class="d" style="background:var(--bad)"></span>'+(lang==="en"?a.detail_en:a.detail_tr)+'</div>');
+  if(d.shrinkage&&d.shrinkage.total_value>500){h+='<div class="it"><span class="d" style="background:var(--bad)"></span>'+money(d.shrinkage.total_value)+' '+t.shrinkAlert+'</div>';}
   (d.suggestions||[]).slice(0,2).forEach(sg=>h+='<div class="it"><span class="d" style="background:var(--good)"></span>'+(lang==="en"?sg.detail_en:sg.detail_tr)+'</div>');
   h+='</div></div>';
   document.getElementById("content").innerHTML=h;
@@ -230,6 +231,14 @@ function renderReports(){const t=T[lang],d=DATA;const hrs=d.hourly.hours,vals=hr
   d.anomalies.forEach(a=>{const cls=a.level==="high"?"bad":a.level==="medium"?"warn":"l";h+='<div class="alert '+cls+'"><div class="t">'+(lang==="en"?a.title_en:a.title_tr)+'</div><div class="d">'+(lang==="en"?a.detail_en:a.detail_tr)+'</div></div>';});
   h+='<div class="mtitle">'+t.suggestions+'</div>';
   d.suggestions.forEach(sg=>h+='<div class="alert good"><div class="t">'+(lang==="en"?sg.title_en:sg.title_tr)+'</div><div class="d">'+(lang==="en"?sg.detail_en:sg.detail_tr)+'</div></div>');
+  // Fire & Kaçak
+  if(d.shrinkage){const sh=d.shrinkage;
+    h+='<div class="mtitle">'+t.shrink+'</div>';
+    h+='<div class="card rise" style="border-left:3px solid var(--bad)"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><div class="ct">'+t.shrinkTotal+'</div><div class="vl" style="font-size:22px;color:var(--bad)">'+money(sh.total_value)+'</div></div><div class="ctsub">'+t.shrinkSub+'</div><div style="margin-top:14px">';
+    if(sh.items.filter(x=>x.diff>0).length===0){h+='<div class="nms" style="color:var(--t3)">'+t.shrinkNone+'</div>';}
+    sh.items.filter(x=>x.diff>0).forEach(i=>{const cls=i.level==='high'?'bad':i.level==='medium'?'warn':'l';
+      h+='<div class="li"><div><div class="nmt">'+i.item+'</div><div class="nms">'+t.shrinkExpected+' '+i.expected+' '+i.unit+' · '+t.shrinkActual+' '+i.actual+' '+i.unit+' · '+(lang==="en"?i.note_en:i.note_tr)+'</div></div><span class="amt" style="color:var(--bad)">+'+money(i.value)+'</span></div>';});
+    h+='</div></div>';}
   h+='<div class="mtitle">'+t.refunds+'</div><div class="kpis"><div class="kpi"><div class="lb">'+t.refundRate+'</div><div class="vl">%'+d.refunds.void_rate_pct+'</div><div class="ch" style="color:var(--t3)">'+money(d.refunds.void_total)+'</div></div></div>';
   document.getElementById("content").innerHTML=h;
 }
