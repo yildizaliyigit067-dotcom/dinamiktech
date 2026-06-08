@@ -267,6 +267,73 @@ def anomaly_signals(rows):
 
 
 # --- GÜN SONU ÖZETİ (her şeyi birleştirir) -----------------------------------
+def shrinkage_from_manage(rows, manage):
+    """
+    Yönetici panelinde girilen reçete + stok ile GERÇEK fire/kaçak hesabı.
+    - Satılan her ürün × reçetesi = beklenen malzeme tüketimi
+    - Beklenen tüketim, malzemenin maliyetiyle TL'ye çevrilir
+    - (Gerçek stok sayımı girildiğinde beklenen vs gerçek farkı da eklenir)
+
+    manage: {"products":[...], "ingredients":[...], "recipes":{pid:[{ingredient_id,amount}]}}
+    Döner: shrinkage_report ile aynı formatta (frontend değişmeden çalışır).
+    """
+    products = {p["id"]: p for p in manage.get("products", [])}
+    ingredients = {i["id"]: i for i in manage.get("ingredients", [])}
+    recipes = manage.get("recipes", {})
+    if not products or not ingredients or not recipes:
+        return None  # yeterli veri yoksa demo'ya düş
+
+    # Ürün adından product_id bulmak için ad->id haritası
+    name_to_pid = {p["name"]: pid for pid, p in products.items()}
+
+    # Satılan ürün adetleri (item_name -> qty)
+    sold = defaultdict(float)
+    for r in _active(rows):
+        sold[r["item_name"]] += r["quantity"]
+
+    # Her malzeme için beklenen tüketim (reçete × satış)
+    expected = defaultdict(float)  # ingredient_id -> miktar
+    for name, qty in sold.items():
+        pid = name_to_pid.get(name)
+        if not pid or pid not in recipes:
+            continue
+        for line in recipes[pid]:
+            iid = line.get("ingredient_id")
+            amt = line.get("amount", 0) or 0
+            if iid:
+                expected[iid] += amt * qty
+
+    items = []
+    for iid, exp in expected.items():
+        ing = ingredients.get(iid)
+        if not ing:
+            continue
+        cost = ing.get("cost", 0) or 0
+        exp_val = round(exp * cost)
+        # Gerçek stok sayımı henüz yok; beklenen tüketimi gösteriyoruz.
+        # Stok sayımı girilince "actual" eklenip fark hesaplanacak.
+        items.append({
+            "item": ing.get("name", "?"),
+            "unit": ing.get("unit", ""),
+            "expected": round(exp, 2),
+            "actual": round(exp, 2),   # sayım girilene kadar eşit kabul
+            "diff": 0,
+            "diff_pct": 0,
+            "value": 0,
+            "expected_value": exp_val,
+            "level": "low",
+            "note_tr": "beklenen tüketim (sayım bekleniyor)",
+            "note_en": "expected consumption (awaiting count)",
+        })
+    items.sort(key=lambda x: -x["expected_value"])
+    return {
+        "items": items,
+        "total_value": 0,
+        "high_count": 0,
+        "mode": "manage",  # bu rapor gerçek reçeteden geldi
+    }
+
+
 def shrinkage_report(items, lang_neutral=True):
     """
     Fire/kaçak özeti. Her kalem reçeteye göre beklenen vs gerçek tüketim farkı.
@@ -306,7 +373,8 @@ def end_of_day(rows, stock, shrinkage=None):
         "suggestions": profit_suggestions(rows),
         "anomalies": anomaly_signals(rows),
         "comparison": comparison(rows),
-        "shrinkage": shrinkage_report(shrinkage) if shrinkage else None,
+        "shrinkage": (shrinkage if isinstance(shrinkage, dict)
+                      else shrinkage_report(shrinkage) if shrinkage else None),
     }
 
 
