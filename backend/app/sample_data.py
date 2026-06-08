@@ -1,11 +1,18 @@
 """
 Gerçekçi örnek veri üreteci / Realistic sample data generator.
-SambaPOS şemasına (Tickets, Orders, Payments) uygun veri üretir.
+
+SambaPOS veritabanına bağlanamadığımız demo aşamasında, gerçek SambaPOS
+şemasındaki alanlara (Tickets, Orders, Payments) birebir karşılık gelen
+veri üretir. Böylece gerçek veriye geçince hiçbir analiz kodu değişmez.
+
+When real MSSQL connection is unavailable (demo mode), this produces data
+that mirrors the real SambaPOS schema so the analytics layer stays identical.
 """
 
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
+# Menü: (ad, kategori, satış fiyatı, maliyet) - kâr marjı analizinin temeli
 MENU = [
     ("Türk Kahvesi", "İçecek", 45, 9),
     ("Latte", "İçecek", 70, 18),
@@ -28,21 +35,26 @@ MENU = [
 PAYMENT_TYPES = ["Nakit", "Kredi Kartı", "Yemek Çeki"]
 
 
-def _busyness(hour):
-    if 12 <= hour <= 14:
+def _busyness(hour: int) -> float:
+    """Saate göre yoğunluk katsayısı - gerçek kafe ritmini taklit eder."""
+    if 12 <= hour <= 14:      # öğle
         return 1.6
-    if 18 <= hour <= 21:
+    if 18 <= hour <= 21:      # akşam
         return 1.9
-    if 9 <= hour <= 11:
+    if 9 <= hour <= 11:       # sabah kahvesi
         return 1.1
-    if 15 <= hour <= 17:
+    if 15 <= hour <= 17:      # ikindi
         return 1.0
     if hour < 9 or hour > 22:
         return 0.25
     return 0.7
 
 
-def generate_tickets(days_back=30, seed=42):
+def generate_tickets(days_back: int = 30, seed: int = 42):
+    """
+    SambaPOS 'Tickets' + 'Orders' + 'Payments' karşılığı düzleştirilmiş kayıtlar.
+    Her satır bir sipariş kalemi (order line).
+    """
     rng = random.Random(seed)
     rows = []
     ticket_no = 10000
@@ -52,7 +64,7 @@ def generate_tickets(days_back=30, seed=42):
     day = start
     while day <= now:
         weekday = day.weekday()
-        day_factor = 1.3 if weekday >= 4 else 1.0
+        day_factor = 1.3 if weekday >= 4 else 1.0  # hafta sonu yoğun
 
         for hour in range(8, 24):
             base = _busyness(hour) * day_factor
@@ -80,6 +92,8 @@ def generate_tickets(days_back=30, seed=42):
                 cashier = rng.choices(
                     ["Ayşe", "Mehmet", "Zeynep", "Can"], weights=[30, 28, 27, 15]
                 )[0]
+                # Can kasiyeri demoda anormal yüksek iptal/ikram yapsın (kaçak sinyali).
+                # Gerçek hayatta bu, kasten yapılan kayıt dışı işleme işaret edebilir.
                 is_void_p = 0.10 if cashier == "Can" else 0.025
                 disc_p = 0.16 if cashier == "Can" else 0.04
                 is_void = rng.random() < is_void_p
@@ -109,6 +123,7 @@ def generate_tickets(days_back=30, seed=42):
     return rows
 
 
+# Basit stok modeli: ürün -> (mevcut stok, kritik eşik, birim)
 def generate_stock():
     return [
         {"item": "Kahve Çekirdeği", "unit": "kg", "current": 2.4, "critical": 5.0},
@@ -120,3 +135,50 @@ def generate_stock():
         {"item": "Mozzarella", "unit": "kg", "current": 1.8, "critical": 4.0},
         {"item": "Patates", "unit": "kg", "current": 30.0, "critical": 12.0},
     ]
+
+
+# Fire/kaçak demosu için: reçete (ürün -> malzeme tüketimi) ve gerçek stok hareketi.
+# Gerçek SambaPOS'ta bu, reçeteler + stok hareketlerinden otomatik hesaplanır.
+def generate_shrinkage():
+    """
+    Beklenen tüketim (reçeteye göre satıştan) vs gerçek depo düşüşü.
+    Pozitif fark = açık (fire veya kaçak). TL değeriyle döner.
+    """
+    # (malzeme, birim, beklenen tüketim, gerçek düşüş, birim maliyet TL)
+    # Et: mezbahadan, balık: hal'den alınır. Yüksek değerli kalemler kaçak riski taşır.
+    rows = [
+        ("Dana Kıyma", "kg", 48.0, 55.2, 380),     # mezbaha - ciddi açık
+        ("Levrek", "kg", 28.0, 33.4, 420),          # balık hal - pahalı, kaçak riski yüksek
+        ("Çipura", "kg", 24.0, 27.8, 400),          # balık hal
+        ("Somon", "kg", 18.0, 22.1, 680),           # balık hal - en pahalı, ciddi açık
+        ("Karides", "kg", 9.0, 11.3, 850),          # balık hal - çok pahalı meze
+        ("Kalamar", "kg", 7.0, 7.6, 520),           # meze
+        ("Ahtapot", "kg", 5.0, 5.9, 720),           # meze - pahalı
+        ("Dana Bonfile", "kg", 15.0, 17.4, 720),    # mezbaha - pahalı et
+        ("Kola (kutu)", "adet", 420, 461, 18),      # forumdaki klasik örnek
+        ("Mozzarella", "kg", 22.0, 24.1, 240),
+        ("Patates", "kg", 95.0, 99.0, 35),          # küçük fire - normal
+        ("Tavuk", "kg", 60.0, 66.5, 165),           # mezbaha
+        ("Beyaz Peynir (meze)", "kg", 12.0, 12.4, 280),  # meze - normal
+        ("Zeytinyağı", "lt", 14.0, 14.3, 320),      # normal
+    ]
+    out = []
+    for name, unit, expected, actual, cost in rows:
+        diff = round(actual - expected, 1)
+        value = round(diff * cost)
+        pct = round(diff / expected * 100, 1) if expected else 0
+        # ciddiyet: %8 üstü ve değer 500 TL üstü -> yüksek (kaçak şüphesi)
+        if pct >= 8 and value >= 500:
+            level = "high"
+        elif pct >= 4 and value >= 200:
+            level = "medium"
+        else:
+            level = "low"
+        out.append({
+            "item": name, "unit": unit,
+            "expected": expected, "actual": actual,
+            "diff": diff, "diff_pct": pct,
+            "value": value, "level": level,
+        })
+    out.sort(key=lambda x: -x["value"])
+    return out
