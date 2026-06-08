@@ -1,17 +1,32 @@
 """
 Veri kaynağı katmanı / Data source layer.
-USE_SAMPLE_DATA=true  -> örnek veri (demo)
-USE_SAMPLE_DATA=false -> gerçek SambaPOS MSSQL
+
+İki mod:
+  1) USE_SAMPLE_DATA=true  -> gerçekçi örnek veri (demo)
+  2) USE_SAMPLE_DATA=false -> gerçek SambaPOS MSSQL veritabanı
+
+Gerçek moda geçmek için .env içinde sadece şunları doldur:
+  USE_SAMPLE_DATA=false
+  SAMBA_DB_SERVER=...
+  SAMBA_DB_NAME=SambaPOS5
+  SAMBA_DB_USER=sa
+  SAMBA_DB_PASSWORD=...
+
+Analiz kodu her iki modda da AYNI sözlük yapısını alır -> hiçbir şey değişmez.
 """
 
 import os
-from .sample_data import generate_tickets, generate_stock
+from datetime import datetime
+from .sample_data import generate_tickets, generate_stock, generate_shrinkage
 
 
-def _use_sample():
+def _use_sample() -> bool:
     return os.getenv("USE_SAMPLE_DATA", "true").lower() != "false"
 
 
+# --- GERÇEK SAMBAPOS SORGUSU -------------------------------------------------
+# SambaPOS şeması: Tickets, Orders (Orders.MenuItemId -> MenuItems),
+# Payments. Bu sorgu sipariş kalemlerini düzleştirir.
 SAMBA_QUERY = """
 SELECT
     t.Id                    AS ticket_id,
@@ -37,8 +52,8 @@ WHERE t.Date >= DATEADD(day, -?, GETDATE())
 """
 
 
-def _fetch_real(days_back):
-    import pyodbc
+def _fetch_real(days_back: int):
+    import pyodbc  # sadece gerçek modda gerekli
 
     server = os.getenv("SAMBA_DB_SERVER")
     db = os.getenv("SAMBA_DB_NAME", "SambaPOS5")
@@ -62,15 +77,26 @@ def _fetch_real(days_back):
     return rows
 
 
-def get_tickets(days_back=30):
+# --- ORTAK ARAYÜZ ------------------------------------------------------------
+def get_tickets(days_back: int = 30):
+    """Sipariş kalemleri listesi döndürür (her iki modda aynı yapı)."""
     if _use_sample():
         return generate_tickets(days_back=days_back)
     return _fetch_real(days_back)
 
 
 def get_stock():
+    """Stok durumu. Gerçek modda InventoryItems tablosundan çekilebilir."""
+    if _use_sample():
+        return generate_stock()
+    # Gerçek stok entegrasyonu işletmeye göre değişir; demo için örnek döner.
     return generate_stock()
 
 
-def data_mode():
+def data_mode() -> str:
     return "sample" if _use_sample() else "live"
+
+
+def get_shrinkage():
+    """Fire/kaçak verisi. Gerçek modda reçete + stok hareketlerinden hesaplanır."""
+    return generate_shrinkage()
