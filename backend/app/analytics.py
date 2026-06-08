@@ -13,6 +13,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from statistics import mean, pstdev
 
+_PAY_EN = {"Nakit": "Cash", "Kredi Kartı": "Card", "Yemek Çeki": "Meal Voucher"}
+
 
 def _active(rows):
     return [r for r in rows if not r.get("is_void")]
@@ -44,8 +46,8 @@ def sales_report(rows):
         "ticket_count": tickets,
         "avg_ticket": round(revenue / tickets, 2) if tickets else 0,
         "by_day": [{"day": k, "total": round(v, 2)} for k, v in sorted(by_day.items())],
-        "by_payment": [{"type": k, "total": round(v, 2)} for k, v in
-                       sorted(by_payment.items(), key=lambda x: -x[1])],
+        "by_payment": [{"type": k, "type_en": _PAY_EN.get(k, k), "total": round(v, 2)}
+                       for k, v in sorted(by_payment.items(), key=lambda x: -x[1])],
     }
 
 
@@ -144,11 +146,15 @@ def profit_suggestions(rows):
         if it["margin_pct"] < 58 and it["qty"] >= 8:
             sug.append({
                 "type": "margin",
-                "title": f"{it['name']} marjı düşük",
-                "detail": (f"{it['name']} iyi satıyor ({it['qty']} adet) ama kâr marjı "
-                           f"%{it['margin_pct']}. 5-10 TL fiyat artışı veya porsiyon/maliyet "
-                           f"düzenlemesi toplam kârı belirgin artırır."),
-                "impact": "yüksek",
+                "title_tr": f"{it['name']} marjı düşük",
+                "title_en": f"{it['name']} has low margin",
+                "detail_tr": (f"{it['name']} iyi satıyor ({it['qty']} adet) ama kâr marjı "
+                              f"%{it['margin_pct']}. 5-10 TL fiyat artışı veya porsiyon/maliyet "
+                              f"düzenlemesi toplam kârı belirgin artırır."),
+                "detail_en": (f"{it['name']} sells well ({it['qty']} units) but its margin is "
+                              f"{it['margin_pct']}%. A 5-10 TL price increase or portion/cost "
+                              f"adjustment would notably raise total profit."),
+                "impact": "high",
             })
 
     # 2) En kârlı ürünleri öne çıkar
@@ -156,11 +162,15 @@ def profit_suggestions(rows):
         star = prod["top_profit"][0]
         sug.append({
             "type": "promote",
-            "title": f"{star['name']} kâr lokomotifin",
-            "detail": (f"{star['name']} en çok kâr getiren ürün "
-                       f"({star['profit']:.0f} TL). Menüde üst sıraya al, "
-                       f"personel önersin, kampanyada bunu kullan."),
-            "impact": "orta",
+            "title_tr": f"{star['name']} kâr lokomotifin",
+            "title_en": f"{star['name']} is your profit driver",
+            "detail_tr": (f"{star['name']} en çok kâr getiren ürün "
+                          f"({star['profit']:.0f} TL). Menüde üst sıraya al, "
+                          f"personel önersin, kampanyada bunu kullan."),
+            "detail_en": (f"{star['name']} is your top profit item "
+                          f"({star['profit']:.0f} TL). Move it up the menu, have staff "
+                          f"recommend it, and feature it in campaigns."),
+            "impact": "medium",
         })
 
     # 3) En çok satan düşük sepetli ürünle çapraz satış
@@ -168,11 +178,15 @@ def profit_suggestions(rows):
         best = prod["top_sellers"][0]
         sug.append({
             "type": "upsell",
-            "title": f"{best['name']} ile çapraz satış",
-            "detail": (f"{best['name']} en çok satan ürünün ({best['qty']} adet). "
-                       f"Yanına yüksek marjlı bir tatlı/içecek menüsü öner; "
-                       f"sepet ortalamasını yükseltir."),
-            "impact": "orta",
+            "title_tr": f"{best['name']} ile çapraz satış",
+            "title_en": f"Cross-sell with {best['name']}",
+            "detail_tr": (f"{best['name']} en çok satan ürünün ({best['qty']} adet). "
+                          f"Yanına yüksek marjlı bir tatlı/içecek menüsü öner; "
+                          f"sepet ortalamasını yükseltir."),
+            "detail_en": (f"{best['name']} is your best seller ({best['qty']} units). "
+                          f"Offer a high-margin dessert/drink alongside it; "
+                          f"it raises the average ticket."),
+            "impact": "medium",
         })
 
     return sug[:6]
@@ -209,10 +223,14 @@ def anomaly_signals(rows):
             if rate > avg + 1.5 * sd and rate > 8 and amount > 200:
                 signals.append({
                     "level": "high",
-                    "title": f"Kasiyer '{c}' iptal/iskonto oranı yüksek",
-                    "detail": (f"'{c}' kasiyerinde iptal+iskonto oranı %{rate:.1f} "
-                               f"(işletme ortalaması %{avg:.1f}). Toplam {amount:.0f} TL. "
-                               f"Bu fark kasten yapılmış olabilir; kayıtları incele."),
+                    "title_tr": f"Kasiyer '{c}' iptal/iskonto oranı yüksek",
+                    "title_en": f"Cashier '{c}' has high void/discount rate",
+                    "detail_tr": (f"'{c}' kasiyerinde iptal+iskonto oranı %{rate:.1f} "
+                                  f"(işletme ortalaması %{avg:.1f}). Toplam {amount:.0f} TL. "
+                                  f"Bu fark kasten yapılmış olabilir; kayıtları incele."),
+                    "detail_en": (f"Cashier '{c}' has a void+discount rate of {rate:.1f}% "
+                                  f"(business average {avg:.1f}%). Total {amount:.0f} TL. "
+                                  f"This gap may be intentional; review the records."),
                 })
 
     # 2) Genel iade oranı sektör eşiğini aşıyor mu?
@@ -220,9 +238,12 @@ def anomaly_signals(rows):
     if rr["void_rate_pct"] > 6:
         signals.append({
             "level": "medium",
-            "title": "Genel iptal oranı yüksek",
-            "detail": (f"İptal/iade oranı %{rr['void_rate_pct']} "
-                       f"({rr['void_total']:.0f} TL). %5 üstü dikkat gerektirir."),
+            "title_tr": "Genel iptal oranı yüksek",
+            "title_en": "Overall void rate is high",
+            "detail_tr": (f"İptal/iade oranı %{rr['void_rate_pct']} "
+                          f"({rr['void_total']:.0f} TL). %5 üstü dikkat gerektirir."),
+            "detail_en": (f"Void/refund rate is {rr['void_rate_pct']}% "
+                          f"({rr['void_total']:.0f} TL). Above 5% needs attention."),
         })
 
     # 3) Nakit oranı beklenmedik düşük/yüksek mi (kayıt dışı sinyali)
@@ -234,9 +255,12 @@ def anomaly_signals(rows):
     if cash_pct < 12:
         signals.append({
             "level": "low",
-            "title": "Nakit oranı çok düşük",
-            "detail": (f"Nakit satış oranı %{cash_pct:.0f}. Bilgi amaçlı; "
-                       f"nakit işlemlerin kasaya tam girip girmediğini kontrol et."),
+            "title_tr": "Nakit oranı çok düşük",
+            "title_en": "Cash ratio is very low",
+            "detail_tr": (f"Nakit satış oranı %{cash_pct:.0f}. Bilgi amaçlı; "
+                          f"nakit işlemlerin kasaya tam girip girmediğini kontrol et."),
+            "detail_en": (f"Cash sales ratio is {cash_pct:.0f}%. For your awareness; "
+                          f"check that cash transactions fully reach the register."),
         })
 
     return signals
