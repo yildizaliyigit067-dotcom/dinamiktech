@@ -9,7 +9,7 @@ import urllib.request
 import urllib.error
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-20250514")
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
 
 def _build_context(report, lang):
