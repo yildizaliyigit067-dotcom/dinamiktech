@@ -31,11 +31,25 @@ _state = {"report": None, "last_refresh": None}
 _lock = threading.Lock()
 
 
+def _compute_shrinkage(rows):
+    """Yönetici verisi (reçete+stok) varsa gerçek fire hesabı; yoksa demo.
+    Her zaman işlenmiş dict döndürür (tutarlılık için)."""
+    try:
+        manage = store.load()
+        real = analytics.shrinkage_from_manage(rows, manage)
+        if real:
+            return real  # zaten dict
+    except Exception:
+        pass
+    # Demo: ham listeyi işlenmiş rapora çevir
+    return analytics.shrinkage_report(get_shrinkage())
+
+
 def refresh_data():
     """SambaPOS'tan veriyi çek, analiz et, cache'i güncelle."""
     rows = get_tickets(days_back=HISTORY_DAYS)
     stock = get_stock()
-    shrink = get_shrinkage()
+    shrink = _compute_shrinkage(rows)
     report = analytics.end_of_day(rows, stock, shrink)
     with _lock:
         _state["report"] = report
@@ -138,7 +152,7 @@ def ingest(body: IngestIn):
         except Exception:
             continue
     stock = get_stock()
-    shrink = get_shrinkage()
+    shrink = _compute_shrinkage(norm)
     report = analytics.end_of_day(norm, stock, shrink)
     with _lock:
         _state["report"] = report
